@@ -58,7 +58,7 @@ class JdbcNamespaceIntegrationTests {
 	@Test
 	@EnabledForTestGroups(LONG_RUNNING)
 	void createEmbeddedDatabaseAgain() {
-		// If Derby isn't cleaned up properly this will fail...
+		// If Derby isn't cleaned up properly this will fail... Update1
 		assertCorrectSetup("jdbc-config.xml", "derbyDataSource");
 	}
 
