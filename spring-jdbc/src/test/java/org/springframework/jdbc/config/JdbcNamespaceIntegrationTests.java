@@ -119,7 +119,7 @@ class JdbcNamespaceIntegrationTests {
 			JdbcTemplate template = new JdbcTemplate(dataSource);
 			assertNumRowsInTestTable(template, 1);
 			context.getBean(EmbeddedDatabaseFactoryBean.class).destroy();
-			// Table has been dropped
+			// Table has been dropped - Update1
 			assertThatExceptionOfType(BadSqlGrammarException.class).isThrownBy(() ->
 					assertNumRowsInTestTable(template, 1));
 		}
