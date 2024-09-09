@@ -54,7 +54,9 @@ class JdbcNamespaceIntegrationTests {
 	void createEmbeddedDatabase() {
 		assertCorrectSetup("jdbc-config.xml", "dataSource", "h2DataSource", "derbyDataSource");
 	}
-
+	
+	// Update
+	
 	@Test
 	@EnabledForTestGroups(LONG_RUNNING)
 	void createEmbeddedDatabaseAgain() {
