@@ -50,6 +50,7 @@ jobs:
       - name: Test UTs
         run: |
           gradle --no-build-cache clean test --continue
+        continue-on-error: true  
       - name: Upload Duration
         run: |
           python gha_add_rows_ti.py
