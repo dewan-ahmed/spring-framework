@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,7 +55,6 @@ import static org.mockito.Mockito.verify;
  */
 class SqlQueryTests {
 
-	// FIXME inline?
 	private static final String SELECT_ID =
 			"select id from custmr";
 	private static final String SELECT_ID_WHERE =
@@ -168,7 +167,6 @@ class SqlQueryTests {
 		given(resultSet.next()).willReturn(true, true, true, false);
 		given(resultSet.getString(1)).willReturn(dbResults[0], dbResults[1], dbResults[2]);
 		StringQuery query = new StringQuery(dataSource, SELECT_FORENAME);
-		query.setRowsExpected(3);
 		String[] results = query.run();
 		assertThat(results).isEqualTo(dbResults);
 		verify(connection).prepareStatement(SELECT_FORENAME);
