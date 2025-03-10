@@ -24,6 +24,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.env.Environment;
 
@@ -76,6 +78,13 @@ public interface BeanRegistry {
 	 * @param customizer callback to customize other bean properties than the name
 	 */
 	<T> void registerBean(String name, Class<T> beanClass, Consumer<Spec<T>> customizer);
+
+	/**
+	 * Register beans using given {@link BeanRegistrar}.
+	 * @param registrar the bean registrar that will be called to register
+	 * additional beans
+	 */
+	void register(BeanRegistrar registrar);
 
 	/**
 	 * Specification for customizing a bean.
@@ -149,6 +158,20 @@ public interface BeanRegistry {
 		 * @see AbstractBeanDefinition#setInstanceSupplier(Supplier)
 		 */
 		Spec<T> supplier(Function<SupplierContext, T> supplier);
+
+		/**
+		 * Set a generics-containing target type of this bean.
+		 * @see #targetType(ResolvableType)
+		 * @see RootBeanDefinition#setTargetType(ResolvableType)
+		 */
+		Spec<T> targetType(ParameterizedTypeReference<? extends T> type);
+
+		/**
+		 * Set a generics-containing target type of this bean.
+		 * @see #targetType(ParameterizedTypeReference)
+		 * @see RootBeanDefinition#setTargetType(ResolvableType)
+		 */
+		Spec<T> targetType(ResolvableType type);
 	}
 
 	/**
