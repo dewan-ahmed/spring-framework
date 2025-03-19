@@ -39,6 +39,22 @@ import org.springframework.core.env.Environment;
 public interface BeanRegistry {
 
 	/**
+	 * Register beans using the given {@link BeanRegistrar}.
+	 * @param registrar the bean registrar that will be called to register
+	 * additional beans
+	 */
+	void register(BeanRegistrar registrar);
+
+	/**
+	 * Given a name, register an alias for it.
+	 * @param name the canonical name
+	 * @param alias the alias to be registered
+	 * @throws IllegalStateException if the alias is already in use
+	 * and may not be overridden
+	 */
+	void registerAlias(String name, String alias);
+
+	/**
 	 * Register a bean from the given bean class, which will be instantiated
 	 * using the related {@link BeanUtils#getResolvableConstructor resolvable constructor}
 	 * if any.
@@ -79,12 +95,6 @@ public interface BeanRegistry {
 	 */
 	<T> void registerBean(String name, Class<T> beanClass, Consumer<Spec<T>> customizer);
 
-	/**
-	 * Register beans using the given {@link BeanRegistrar}.
-	 * @param registrar the bean registrar that will be called to register
-	 * additional beans
-	 */
-	void register(BeanRegistrar registrar);
 
 	/**
 	 * Specification for customizing a bean.
