@@ -25,33 +25,30 @@ import org.springframework.core.type.AnnotationMetadata;
  * to determine the HTTP services and groups to register.
  *
  * @author Rossen Stoyanchev
+ * @author Phillip Webb
+ * @author Olga Maciaszek-Sharma
  * @since 7.0
  */
 class AnnotationHttpServiceRegistrar extends AbstractHttpServiceRegistrar {
 
 	@Override
-	protected void registerHttpServices(GroupRegistry registry, AnnotationMetadata importMetadata) {
+	protected void registerHttpServices(GroupRegistry registry, AnnotationMetadata metadata) {
 
-		MergedAnnotation<?> groupsAnnot = importMetadata.getAnnotations().get(HttpServiceGroups.class);
+		MergedAnnotation<?> groupsAnnot = metadata.getAnnotations().get(ImportHttpServices.Container.class);
 		if (groupsAnnot.isPresent()) {
-			HttpServiceGroup.ClientType clientType = groupsAnnot.getEnum("clientType", HttpServiceGroup.ClientType.class);
 			for (MergedAnnotation<?> annot : groupsAnnot.getAnnotationArray("value", ImportHttpServices.class)) {
-				processImportAnnotation(annot, registry, clientType);
+				processImportAnnotation(annot, registry);
 			}
 		}
 
-		importMetadata.getAnnotations().stream(ImportHttpServices.class).forEach(annot ->
-				processImportAnnotation(annot, registry, HttpServiceGroup.ClientType.UNSPECIFIED));
+		metadata.getAnnotations().stream(ImportHttpServices.class)
+				.forEach(annot -> processImportAnnotation(annot, registry));
 	}
 
-	private void processImportAnnotation(
-			MergedAnnotation<?> annotation, GroupRegistry groupRegistry,
-			HttpServiceGroup.ClientType containerClientType) {
+	private void processImportAnnotation(MergedAnnotation<?> annotation, GroupRegistry groupRegistry) {
 
 		String groupName = annotation.getString("group");
-
 		HttpServiceGroup.ClientType clientType = annotation.getEnum("clientType", HttpServiceGroup.ClientType.class);
-		clientType = (clientType != HttpServiceGroup.ClientType.UNSPECIFIED ? clientType : containerClientType);
 
 		groupRegistry.forGroup(groupName, clientType)
 				.register(annotation.getClassArray("types"))
