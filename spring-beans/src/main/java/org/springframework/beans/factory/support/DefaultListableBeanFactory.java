@@ -162,7 +162,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			new ConcurrentHashMap<>(8);
 
 	/** Whether strict locking is enforced or relaxed in this factory. */
-	private @Nullable final Boolean strictLocking = SpringProperties.checkFlag(STRICT_LOCKING_PROPERTY_NAME);
+	private final @Nullable Boolean strictLocking = SpringProperties.checkFlag(STRICT_LOCKING_PROPERTY_NAME);
 
 	/** Optional id for this factory, for serialization purposes. */
 	private @Nullable String serializationId;
@@ -1048,8 +1048,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	@Override
 	protected @Nullable Boolean isCurrentThreadAllowedToHoldSingletonLock() {
 		String mainThreadPrefix = this.mainThreadPrefix;
-		if (this.mainThreadPrefix != null) {
-			// We only differentiate in the preInstantiateSingletons phase.
+		if (mainThreadPrefix != null) {
+			// We only differentiate in the preInstantiateSingletons phase, using
+			// the volatile mainThreadPrefix field as an indicator for that phase.
 
 			PreInstantiation preInstantiation = this.preInstantiationThread.get();
 			if (preInstantiation != null) {
@@ -1069,7 +1070,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 			else if (this.strictLocking == null) {
 				// No explicit locking configuration -> infer appropriate locking.
-				if (mainThreadPrefix != null && !getThreadNamePrefix().equals(mainThreadPrefix)) {
+				if (!getThreadNamePrefix().equals(mainThreadPrefix)) {
 					// An unmanaged thread (assumed to be application-internal) with lenient locking,
 					// and not part of the same thread pool that provided the main bootstrap thread
 					// (excluding scenarios where we are hit by multiple external bootstrap threads).
