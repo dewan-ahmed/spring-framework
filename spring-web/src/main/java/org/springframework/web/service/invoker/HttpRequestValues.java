@@ -26,6 +26,7 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -74,16 +75,19 @@ public class HttpRequestValues {
 
 	private final @Nullable Object bodyValue;
 
+	private final @Nullable ParameterizedTypeReference<?> bodyValueType;
+
 
 	/**
 	 * Construct {@link HttpRequestValues}.
-	 * @since 6.1
+	 * @since 7.0
 	 */
 	protected HttpRequestValues(@Nullable HttpMethod httpMethod,
 			@Nullable URI uri, @Nullable UriBuilderFactory uriBuilderFactory,
 			@Nullable String uriTemplate, Map<String, String> uriVariables,
-			HttpHeaders headers, MultiValueMap<String, String> cookies, @Nullable Object version,
-			Map<String, Object> attributes, @Nullable Object bodyValue) {
+			HttpHeaders headers, MultiValueMap<String, String> cookies,
+			@Nullable Object version, Map<String, Object> attributes,
+			@Nullable Object bodyValue, @Nullable ParameterizedTypeReference<?> bodyValueType) {
 
 		Assert.isTrue(uri != null || uriTemplate != null, "Neither URI nor URI template");
 
@@ -97,6 +101,7 @@ public class HttpRequestValues {
 		this.version = version;
 		this.attributes = attributes;
 		this.bodyValue = bodyValue;
+		this.bodyValueType = bodyValueType;
 	}
 
 
@@ -174,6 +179,14 @@ public class HttpRequestValues {
 	 */
 	public @Nullable Object getBodyValue() {
 		return this.bodyValue;
+	}
+
+	/**
+	 * Return the type for the {@linkplain #getBodyValue() body value}.
+	 * @since 6.2.7
+	 */
+	public @Nullable ParameterizedTypeReference<?> getBodyValueType() {
+		return this.bodyValueType;
 	}
 
 
@@ -263,6 +276,8 @@ public class HttpRequestValues {
 		private @Nullable Map<String, Object> attributes;
 
 		private @Nullable Object bodyValue;
+
+		private @Nullable ParameterizedTypeReference<?> bodyValueType;
 
 		protected Builder() {
 		}
@@ -417,6 +432,15 @@ public class HttpRequestValues {
 			this.bodyValue = bodyValue;
 		}
 
+		/**
+		 * Variant of {@link #setBodyValue(Object)} with the body type.
+		 * @since 6.2.7
+		 */
+		public void setBodyValue(@Nullable Object bodyValue, @Nullable ParameterizedTypeReference<?> valueType) {
+			setBodyValue(bodyValue);
+			this.bodyValueType = valueType;
+		}
+
 
 		// Implementation of {@link Metadata} methods
 
@@ -491,7 +515,7 @@ public class HttpRequestValues {
 
 			return createRequestValues(
 					this.httpMethod, uri, uriBuilderFactory, uriTemplate, uriVars,
-					headers, cookies, this.version, attributes, bodyValue);
+					headers, cookies, this.version, attributes, bodyValue, this.bodyValueType);
 		}
 
 		protected boolean hasParts() {
@@ -530,18 +554,18 @@ public class HttpRequestValues {
 
 		/**
 		 * Create {@link HttpRequestValues} from values passed to the {@link Builder}.
-		 * @since 6.1
+		 * @since 7.0
 		 */
 		protected HttpRequestValues createRequestValues(
 				@Nullable HttpMethod httpMethod,
 				@Nullable URI uri, @Nullable UriBuilderFactory uriBuilderFactory, @Nullable String uriTemplate,
-				Map<String, String> uriVars,
-				HttpHeaders headers, MultiValueMap<String, String> cookies, @Nullable Object version,
-				Map<String, Object> attributes, @Nullable Object bodyValue) {
+				Map<String, String> uriVars, HttpHeaders headers, MultiValueMap<String, String> cookies,
+				@Nullable Object version, Map<String, Object> attributes,
+				@Nullable Object bodyValue, @Nullable ParameterizedTypeReference<?> bodyValueType) {
 
 			return new HttpRequestValues(
 					this.httpMethod, uri, uriBuilderFactory, uriTemplate,
-					uriVars, headers, cookies, version, attributes, bodyValue);
+					uriVars, headers, cookies, version, attributes, bodyValue, bodyValueType);
 		}
 	}
 
