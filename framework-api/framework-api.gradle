@@ -1,6 +1,6 @@
 plugins {
 	id 'java-platform'
-	id 'io.freefair.aggregate-javadoc' version '8.3'
+	id 'io.freefair.aggregate-javadoc' version '8.13.1'
 }
 
 description = "Spring Framework API Docs"
@@ -25,6 +25,7 @@ javadoc {
 	}))
 
 	title = "${rootProject.description} ${version} API"
+	failOnError = true
 	options {
 		encoding = "UTF-8"
 		memberLevel = JavadocMemberLevel.PROTECTED
