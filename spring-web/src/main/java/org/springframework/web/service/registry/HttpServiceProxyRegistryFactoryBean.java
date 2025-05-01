@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
@@ -57,33 +58,35 @@ import org.springframework.web.service.invoker.HttpServiceProxyFactory;
  * @see AbstractHttpServiceRegistrar
  */
 public final class HttpServiceProxyRegistryFactoryBean
-		implements ApplicationContextAware, InitializingBean, FactoryBean<HttpServiceProxyRegistry> {
+		implements ApplicationContextAware, BeanClassLoaderAware, InitializingBean,
+		FactoryBean<HttpServiceProxyRegistry> {
 
 	private static final Map<HttpServiceGroup.ClientType, HttpServiceGroupAdapter<?>> groupAdapters =
 			GroupAdapterInitializer.initGroupAdapters();
 
 
-	private final Set<ProxyHttpServiceGroup> groupSet;
+	private final GroupsMetadata groupsMetadata;
 
 	private @Nullable ApplicationContext applicationContext;
+
+	private @Nullable ClassLoader beanClassLoader;
 
 	private @Nullable HttpServiceProxyRegistry proxyRegistry;
 
 
 	HttpServiceProxyRegistryFactoryBean(GroupsMetadata groupsMetadata) {
-		this.groupSet = groupsMetadata.groups().stream()
-				.map(group -> {
-					HttpServiceGroupAdapter<?> adapter = groupAdapters.get(group.clientType());
-					Assert.state(adapter != null, "No HttpServiceGroupAdapter for type " + group.clientType());
-					return new ProxyHttpServiceGroup(group, adapter);
-				})
-				.collect(Collectors.toSet());
+		this.groupsMetadata = groupsMetadata;
 	}
 
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
+	}
+
+	@Override
+	public void setBeanClassLoader(ClassLoader beanClassLoader) {
+		this.beanClassLoader = beanClassLoader;
 	}
 
 	@Override
@@ -95,18 +98,24 @@ public final class HttpServiceProxyRegistryFactoryBean
 	@Override
 	public void afterPropertiesSet() {
 		Assert.notNull(this.applicationContext, "ApplicationContext not initialized");
+		Assert.notNull(this.beanClassLoader, "BeanClassLoader not initialized");
+
+		// Create the groups from the metadata
+		Set<ProxyHttpServiceGroup> groups = this.groupsMetadata.groups(this.beanClassLoader).stream()
+				.map(ProxyHttpServiceGroup::new)
+				.collect(Collectors.toSet());
 
 		// Apply group configurers
 		groupAdapters.forEach((clientType, groupAdapter) ->
 				this.applicationContext.getBeanProvider(groupAdapter.getConfigurerType())
 						.orderedStream()
-						.forEach(configurer -> configurer.configureGroups(new DefaultGroups<>(clientType))));
+						.forEach(configurer -> configurer.configureGroups(new DefaultGroups<>(groups, clientType))));
 
 		// Create proxies
-		Map<String, Map<Class<?>, Object>> groupProxyMap = this.groupSet.stream()
+		Map<String, Map<Class<?>, Object>> proxies = groups.stream()
 				.collect(Collectors.toMap(ProxyHttpServiceGroup::name, ProxyHttpServiceGroup::createProxies));
 
-		this.proxyRegistry = new DefaultHttpServiceProxyRegistry(groupProxyMap);
+		this.proxyRegistry = new DefaultHttpServiceProxyRegistry(proxies);
 	}
 
 
@@ -159,10 +168,16 @@ public final class HttpServiceProxyRegistryFactoryBean
 
 		private BiConsumer<HttpServiceGroup, HttpServiceProxyFactory.Builder> proxyFactoryConfigurer = (group, builder) -> {};
 
-		ProxyHttpServiceGroup(HttpServiceGroup group, HttpServiceGroupAdapter<?> groupAdapter) {
+		ProxyHttpServiceGroup(HttpServiceGroup group) {
 			this.declaredGroup = group;
-			this.groupAdapter = groupAdapter;
-			this.clientBuilder = groupAdapter.createClientBuilder();
+			this.groupAdapter = getGroupAdapter(group.clientType());
+			this.clientBuilder = this.groupAdapter.createClientBuilder();
+		}
+
+		private static HttpServiceGroupAdapter<?> getGroupAdapter(HttpServiceGroup.ClientType clientType) {
+			HttpServiceGroupAdapter<?> adapter = groupAdapters.get(clientType);
+			Assert.state(adapter != null, "No HttpServiceGroupAdapter for type " + clientType);
+			return adapter;
 		}
 
 		@Override
@@ -208,17 +223,21 @@ public final class HttpServiceProxyRegistryFactoryBean
 		public String toString() {
 			return getClass().getSimpleName() + "[id=" + name() + "]";
 		}
+
 	}
 
 
 	/**
 	 * Default implementation of Groups that helps to configure the set of declared groups.
 	 */
-	private final class DefaultGroups<CB> implements HttpServiceGroupConfigurer.Groups<CB> {
+	private static final class DefaultGroups<CB> implements HttpServiceGroupConfigurer.Groups<CB> {
+
+		private final Set<ProxyHttpServiceGroup> groups;
 
 		private Predicate<HttpServiceGroup> filter;
 
-		DefaultGroups(HttpServiceGroup.ClientType clientType) {
+		DefaultGroups(Set<ProxyHttpServiceGroup> groups, HttpServiceGroup.ClientType clientType) {
+			this.groups = groups;
 			this.filter = group -> group.clientType().equals(clientType);
 		}
 
@@ -255,7 +274,7 @@ public final class HttpServiceProxyRegistryFactoryBean
 				BiConsumer<HttpServiceGroup, CB> clientConfigurer,
 				BiConsumer<HttpServiceGroup, HttpServiceProxyFactory.Builder> proxyFactoryConfigurer) {
 
-			groupSet.stream().filter(this.filter).forEach(group ->
+			this.groups.stream().filter(this.filter).forEach(group ->
 					group.apply(clientConfigurer, proxyFactoryConfigurer));
 		}
 	}

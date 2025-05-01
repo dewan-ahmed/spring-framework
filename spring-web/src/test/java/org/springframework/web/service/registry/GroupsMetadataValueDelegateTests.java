@@ -39,7 +39,6 @@ import org.springframework.core.test.tools.TestCompiler;
 import org.springframework.javapoet.CodeBlock;
 import org.springframework.javapoet.MethodSpec;
 import org.springframework.util.ReflectionUtils;
-import org.springframework.web.service.registry.GroupsMetadata.DefaultRegistration;
 import org.springframework.web.service.registry.GroupsMetadata.Registration;
 import org.springframework.web.service.registry.HttpServiceGroup.ClientType;
 import org.springframework.web.service.registry.echo.EchoA;
@@ -59,21 +58,21 @@ class GroupsMetadataValueDelegateTests {
 
 	@Test
 	void generateRegistrationWithOnlyName() {
-		DefaultRegistration registration = new DefaultRegistration("test", ClientType.UNSPECIFIED);
+		Registration registration = new Registration("test", ClientType.UNSPECIFIED);
 		compile(registration, (instance, compiled) -> assertThat(instance)
 				.isInstanceOfSatisfying(Registration.class, hasRegistration("test", ClientType.UNSPECIFIED)));
 	}
 
 	@Test
 	void generateRegistrationWitNoHttpServiceTypeName() {
-		DefaultRegistration registration = new DefaultRegistration("test", ClientType.REST_CLIENT);
+		Registration registration = new Registration("test", ClientType.REST_CLIENT);
 		compile(registration, (instance, compiled) -> assertThat(instance)
 				.isInstanceOfSatisfying(Registration.class, hasRegistration("test", ClientType.REST_CLIENT)));
 	}
 
 	@Test
 	void generateRegistrationWitOneHttpServiceTypeName() {
-		DefaultRegistration registration = new DefaultRegistration("test", ClientType.WEB_CLIENT,
+		Registration registration = new Registration("test", ClientType.WEB_CLIENT,
 				httpServiceTypeNames("com.example.MyClient"));
 		compile(registration, (instance, compiled) -> assertThat(instance)
 				.isInstanceOfSatisfying(Registration.class, hasRegistration(
@@ -82,7 +81,7 @@ class GroupsMetadataValueDelegateTests {
 
 	@Test
 	void generateRegistrationWitHttpServiceTypeNames() {
-		DefaultRegistration registration = new DefaultRegistration("test", ClientType.WEB_CLIENT,
+		Registration registration = new Registration("test", ClientType.WEB_CLIENT,
 				httpServiceTypeNames("com.example.MyClient", "com.example.another.TestClient"));
 		compile(registration, (instance, compiled) -> assertThat(instance)
 				.isInstanceOfSatisfying(Registration.class, hasRegistration(
@@ -92,7 +91,7 @@ class GroupsMetadataValueDelegateTests {
 	@Test
 	void generateGroupsMetadataEmpty() {
 		compile(new GroupsMetadata(), (instance, compiled) -> assertThat(instance)
-				.isInstanceOfSatisfying(GroupsMetadata.class, metadata -> assertThat(metadata.groups()).isEmpty()));
+				.isInstanceOfSatisfying(GroupsMetadata.class, metadata -> assertThat(metadata.groups(compiled.getClassLoader())).isEmpty()));
 	}
 
 	@Test
@@ -100,7 +99,7 @@ class GroupsMetadataValueDelegateTests {
 		GroupsMetadata groupsMetadata = new GroupsMetadata();
 		groupsMetadata.getOrCreateGroup("test-group", ClientType.REST_CLIENT).httpServiceTypeNames().add(EchoA.class.getName());
 		compile(groupsMetadata, (instance, compiled) -> assertThat(instance)
-				.isInstanceOfSatisfying(GroupsMetadata.class, metadata -> assertThat(metadata.groups())
+				.isInstanceOfSatisfying(GroupsMetadata.class, metadata -> assertThat(metadata.groups(compiled.getClassLoader()))
 						.singleElement().satisfies(hasHttpServiceGroup("test-group", ClientType.REST_CLIENT, EchoA.class))));
 	}
 
@@ -115,7 +114,7 @@ class GroupsMetadataValueDelegateTests {
 		Function<GeneratedClass, ValueCodeGenerator> valueCodeGeneratorFactory = generatedClass ->
 				ValueCodeGenerator.withDefaults().add(List.of(new GroupsMetadataValueDelegate()));
 		compile(valueCodeGeneratorFactory, groupsMetadata, (instance, compiled) -> assertThat(instance)
-				.isInstanceOfSatisfying(GroupsMetadata.class, metadata -> assertThat(metadata.groups())
+				.isInstanceOfSatisfying(GroupsMetadata.class, metadata -> assertThat(metadata.groups(compiled.getClassLoader()))
 						.satisfiesOnlyOnce(hasHttpServiceGroup("test-group", ClientType.REST_CLIENT, EchoA.class, EchoB.class))
 						.satisfiesOnlyOnce(hasHttpServiceGroup("another-group", ClientType.WEB_CLIENT, GreetingA.class, GreetingB.class))
 						.hasSize(2)));
@@ -130,7 +129,7 @@ class GroupsMetadataValueDelegateTests {
 				.addAll(List.of(GreetingA.class.getName(), GreetingB.class.getName()));
 
 		compile(groupsMetadata, (instance, compiled) -> assertThat(instance)
-				.isInstanceOfSatisfying(GroupsMetadata.class, metadata -> assertThat(metadata.groups())
+				.isInstanceOfSatisfying(GroupsMetadata.class, metadata -> assertThat(metadata.groups(compiled.getClassLoader()))
 						.satisfiesOnlyOnce(hasHttpServiceGroup("test-group", ClientType.REST_CLIENT, EchoA.class, EchoB.class))
 						.satisfiesOnlyOnce(hasHttpServiceGroup("another-group", ClientType.WEB_CLIENT, GreetingA.class, GreetingB.class))
 						.hasSize(2)));

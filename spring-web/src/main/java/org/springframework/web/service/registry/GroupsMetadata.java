@@ -26,26 +26,28 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
 /**
  * Container for HTTP Service type registrations, initially storing HTTP Service
  * type names as {@link Registration}s, and later exposing access to those
- * registrations as {@link HttpServiceGroup}s via {@link #groups()}.
+ * registrations as {@link HttpServiceGroup}s via {@link #groups(ClassLoader)}.
  *
  * @author Rossen Stoyanchev
  * @since 7.0
  */
 final class GroupsMetadata {
 
-	private final Map<String, DefaultRegistration> groupMap;
+	private final Map<String, Registration> groupMap;
 
 	public GroupsMetadata() {
 		this(Collections.emptyList());
 	}
 
-	GroupsMetadata(Iterable<DefaultRegistration> registrations) {
+	GroupsMetadata(Iterable<Registration> registrations) {
 		this.groupMap = new LinkedHashMap<>();
 		registrations.forEach(registration -> this.groupMap.put(registration.name(), registration));
 	}
@@ -56,7 +58,7 @@ final class GroupsMetadata {
 	 * types after checking they don't conflict.
 	 */
 	public Registration getOrCreateGroup(String groupName, HttpServiceGroup.ClientType clientType) {
-		return this.groupMap.computeIfAbsent(groupName, name -> new DefaultRegistration(name, clientType))
+		return this.groupMap.computeIfAbsent(groupName, name -> new Registration(name, clientType))
 				.clientType(clientType);
 	}
 
@@ -82,23 +84,16 @@ final class GroupsMetadata {
 	/**
 	 * Create the {@link HttpServiceGroup}s for all registrations.
 	 */
-	public Collection<HttpServiceGroup> groups() {
-		return this.groupMap.values().stream().map(DefaultRegistration::toHttpServiceGroup).toList();
-	}
-
-	public static Class<?> loadClass(String type) {
-		try {
-			return ClassUtils.forName(type, GroupsMetadata.class.getClassLoader());
-		}
-		catch (ClassNotFoundException ex) {
-			throw new IllegalStateException("Failed to load '" + type + "'", ex);
-		}
+	public Collection<HttpServiceGroup> groups(@Nullable ClassLoader classLoader) {
+		return this.groupMap.values().stream()
+			.map(registration -> registration.toHttpServiceGroup(classLoader))
+			.toList();
 	}
 
 	/**
-	 * Return the raw {@link DefaultRegistration registrations}.
+	 * Return the raw {@link Registration registrations}.
 	 */
-	Stream<DefaultRegistration> registrations() {
+	Stream<Registration> registrations() {
 		return this.groupMap.values().stream();
 	}
 
@@ -106,79 +101,66 @@ final class GroupsMetadata {
 	/**
 	 * Registration metadata for an {@link HttpServiceGroup}.
 	 */
-	interface Registration {
-
-		String name();
-
-		HttpServiceGroup.ClientType clientType();
-
-		Set<String> httpServiceTypeNames();
-	}
-
-
-	/**
-	 * Default implementation of {@link Registration}.
-	 */
-	static class DefaultRegistration implements Registration {
+	static class Registration {
 
 		private final String name;
 
 		private HttpServiceGroup.ClientType clientType;
 
-		private final Set<String> typeNames;
+		private final Set<String> httpServiceTypeNames;
 
-		DefaultRegistration(String name, HttpServiceGroup.ClientType clientType) {
+		Registration(String name, HttpServiceGroup.ClientType clientType) {
 			this(name, clientType, new LinkedHashSet<>());
 		}
 
-		DefaultRegistration(String name, HttpServiceGroup.ClientType clientType, Set<String> typeNames) {
+		Registration(String name, HttpServiceGroup.ClientType clientType, Set<String> httpServiceTypeNames) {
 			this.name = name;
 			this.clientType = clientType;
-			this.typeNames = typeNames;
+			this.httpServiceTypeNames = httpServiceTypeNames;
 		}
 
-		@Override
-		public String name() {
+		String name() {
 			return this.name;
 		}
 
-		@Override
-		public HttpServiceGroup.ClientType clientType() {
+		HttpServiceGroup.ClientType clientType() {
 			return this.clientType;
 		}
 
-		@Override
-		public Set<String> httpServiceTypeNames() {
-			return this.typeNames;
+		Set<String> httpServiceTypeNames() {
+			return this.httpServiceTypeNames;
 		}
 
 		/**
 		 * Update the client type if it does not conflict with the existing value.
 		 */
-		public DefaultRegistration clientType(HttpServiceGroup.ClientType other) {
-			if (this.clientType.isUnspecified()) {
-				this.clientType = other;
-			}
-			else {
-				Assert.isTrue(this.clientType == other || other.isUnspecified(),
-						"ClientType conflict for HttpServiceGroup '" + this.name + "'");
-			}
+		public Registration clientType(HttpServiceGroup.ClientType other) {
+			this.clientType = (this.clientType.isUnspecified() ? other : this.clientType);
+			Assert.isTrue(this.clientType == other || other.isUnspecified(),
+					"ClientType conflict for HttpServiceGroup '" + this.name + "'");
 			return this;
 		}
 
 		/**
 		 * Create the {@link HttpServiceGroup} from the metadata.
 		 */
-		public HttpServiceGroup toHttpServiceGroup() {
-			return new RegisteredGroup(this.name,
-					(this.clientType.isUnspecified() ? HttpServiceGroup.ClientType.REST_CLIENT : this.clientType),
-					this.typeNames.stream().map(GroupsMetadata::loadClass).collect(Collectors.toSet()));
+		public HttpServiceGroup toHttpServiceGroup(@Nullable ClassLoader classLoader) {
+
+			HttpServiceGroup.ClientType clientTypeToUse =
+					(this.clientType.isUnspecified() ? HttpServiceGroup.ClientType.REST_CLIENT : this.clientType);
+
+			Set<Class<?>> httpServiceTypes = this.httpServiceTypeNames.stream()
+					.map(typeName -> ClassUtils.resolveClassName(typeName, classLoader))
+					.collect(Collectors.toSet());
+
+			return new RegisteredGroup(this.name, clientTypeToUse, httpServiceTypes);
 		}
 
 		@Override
 		public String toString() {
-			return "Group '" + this.name + "', ClientType." + this.clientType + ", " + this.typeNames;
+			return "Group '" + this.name + "', ClientType." + this.clientType + ", " + this.httpServiceTypeNames;
 		}
+
 	}
 
 
