@@ -162,6 +162,12 @@ public abstract class AbstractAnnotationMetadataTests {
 		}
 
 		@Test
+		void getSuperClassNameWhenPackageInfoReturnsNull() throws Exception {
+			Class<?> packageClass = Class.forName(getClass().getPackageName() + ".package-info");
+			assertThat(get(packageClass).getSuperClassName()).isNull();
+		}
+
+		@Test
 		void getInterfaceNamesWhenHasInterfacesReturnsNames() {
 			assertThat(get(TestSubclass.class).getInterfaceNames()).containsExactly(TestInterface.class.getName());
 			assertThat(get(TestSubInterface.class).getInterfaceNames()).containsExactly(TestInterface.class.getName());
@@ -176,6 +182,13 @@ public abstract class AbstractAnnotationMetadataTests {
 		void getMemberClassNamesWhenHasMemberClassesReturnsNames() {
 			assertThat(get(TestMemberClass.class).getMemberClassNames()).containsExactlyInAnyOrder(
 					TestMemberClass.TestMemberClassInnerClass.class.getName(), TestMemberClass.TestMemberClassInnerInterface.class.getName());
+		}
+
+		@Test
+		void getMemberClassNamesWhenHasNestedMemberClassesReturnsOnlyFirstLevel() {
+			assertThat(get(TestNestedMemberClass.class).getMemberClassNames()).containsOnly(
+					TestNestedMemberClass.TestMemberClassInnerClassA.class.getName(),
+					TestNestedMemberClass.TestMemberClassInnerClassB.class.getName());
 		}
 
 		@Test
@@ -210,6 +223,22 @@ public abstract class AbstractAnnotationMetadataTests {
 			}
 
 			interface TestMemberClassInnerInterface {
+			}
+
+		}
+
+		public static class TestNestedMemberClass {
+
+			public static class TestMemberClassInnerClassA {
+
+				public static class TestMemberClassInnerClassAA {
+
+				}
+
+			}
+
+			public static class TestMemberClassInnerClassB {
+
 			}
 
 		}
