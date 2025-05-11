@@ -225,18 +225,24 @@ public class PropertySourcesPlaceholderConfigurer extends PlaceholderConfigurerS
 	 */
 	private static class ConfigurableEnvironmentPropertySource extends PropertySource<ConfigurableEnvironment> {
 
-		private final PropertySources propertySources;
-
-
 		ConfigurableEnvironmentPropertySource(ConfigurableEnvironment environment) {
 			super(ENVIRONMENT_PROPERTIES_PROPERTY_SOURCE_NAME, environment);
-			this.propertySources = environment.getPropertySources();
 		}
 
 
 		@Override
+		public boolean containsProperty(String name) {
+			for (PropertySource<?> propertySource : super.source.getPropertySources()) {
+				if (propertySource.containsProperty(name)) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		@Override
 		public @Nullable Object getProperty(String name) {
-			for (PropertySource<?> propertySource : this.propertySources) {
+			for (PropertySource<?> propertySource : super.source.getPropertySources()) {
 				Object candidate = propertySource.getProperty(name);
 				if (candidate != null) {
 					return candidate;
@@ -246,18 +252,8 @@ public class PropertySourcesPlaceholderConfigurer extends PlaceholderConfigurerS
 		}
 
 		@Override
-		public boolean containsProperty(String name) {
-			for (PropertySource<?> propertySource : this.propertySources) {
-				if (propertySource.containsProperty(name)) {
-					return true;
-				}
-			}
-			return false;
-		}
-
-		@Override
 		public String toString() {
-			return "ConfigurableEnvironmentPropertySource {propertySources=" + this.propertySources + "}";
+			return "ConfigurableEnvironmentPropertySource {propertySources=" + super.source.getPropertySources() + "}";
 		}
 	}
 
@@ -273,6 +269,11 @@ public class PropertySourcesPlaceholderConfigurer extends PlaceholderConfigurerS
 			super(ENVIRONMENT_PROPERTIES_PROPERTY_SOURCE_NAME, environment);
 		}
 
+
+		@Override
+		public boolean containsProperty(String name) {
+			return super.source.containsProperty(name);
+		}
 
 		@Override
 		public @Nullable Object getProperty(String name) {
