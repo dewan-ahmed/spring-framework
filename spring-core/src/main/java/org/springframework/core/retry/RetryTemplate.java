@@ -16,6 +16,7 @@
 
 package org.springframework.core.retry;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +32,7 @@ import org.springframework.util.backoff.BackOffExecution;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
- * A basic implementation of {@link RetryOperations} that invokes and potentially
+ * A basic implementation of {@link RetryOperations} that executes and potentially
  * retries a {@link Retryable} operation based on a configured {@link RetryPolicy}
  * and {@link BackOff} policy.
  *
@@ -60,10 +61,11 @@ public class RetryTemplate implements RetryOperations {
 
 	protected RetryPolicy retryPolicy = new MaxRetryAttemptsPolicy();
 
-	protected BackOff backOffPolicy = new FixedBackOff(1000, Long.MAX_VALUE);
+	protected BackOff backOffPolicy = new FixedBackOff(Duration.ofSeconds(1));
 
 	protected RetryListener retryListener = new RetryListener() {
 	};
+
 
 	/**
 	 * Create a new {@code RetryTemplate} with maximum 3 retry attempts and a
@@ -94,6 +96,7 @@ public class RetryTemplate implements RetryOperations {
 		this.backOffPolicy = backOffPolicy;
 	}
 
+
 	/**
 	 * Set the {@link RetryPolicy} to use.
 	 * <p>Defaults to {@code new MaxRetryAttemptsPolicy()}.
@@ -107,7 +110,7 @@ public class RetryTemplate implements RetryOperations {
 
 	/**
 	 * Set the {@link BackOff} policy to use.
-	 * <p>Defaults to {@code new FixedBackOff(1000, Long.MAX_VALUE))}.
+	 * <p>Defaults to {@code new FixedBackOff(Duration.ofSeconds(1))}.
 	 * @param backOffPolicy the backoff policy to use
 	 * @see FixedBackOff
 	 */
@@ -144,7 +147,7 @@ public class RetryTemplate implements RetryOperations {
 		// Initial attempt
 		try {
 			logger.debug(() -> "Preparing to execute retryable operation '%s'".formatted(retryableName));
-			R result = retryable.run();
+			R result = retryable.execute();
 			logger.debug(() -> "Retryable operation '%s' completed successfully".formatted(retryableName));
 			return result;
 		}
@@ -162,7 +165,7 @@ public class RetryTemplate implements RetryOperations {
 				logger.debug(() -> "Preparing to retry operation '%s'".formatted(retryableName));
 				try {
 					this.retryListener.beforeRetry(retryExecution);
-					R result = retryable.run();
+					R result = retryable.execute();
 					this.retryListener.onRetrySuccess(retryExecution, result);
 					logger.debug(() -> "Retryable operation '%s' completed successfully after retry"
 							.formatted(retryableName));
