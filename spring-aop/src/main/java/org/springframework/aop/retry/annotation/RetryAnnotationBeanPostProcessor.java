@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2025 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,10 @@ import org.springframework.aop.framework.autoproxy.AbstractBeanFactoryAwareAdvis
 import org.springframework.aop.support.ComposablePointcut;
 import org.springframework.aop.support.DefaultPointcutAdvisor;
 import org.springframework.aop.support.annotation.AnnotationMatchingPointcut;
-import org.springframework.beans.factory.config.BeanPostProcessor;
 
 /**
- * A convenient {@link BeanPostProcessor} that applies {@link RetryAnnotationInterceptor}
+ * A convenient {@link org.springframework.beans.factory.config.BeanPostProcessor
+ * BeanPostProcessor} that applies {@link RetryAnnotationInterceptor}
  * to all bean methods annotated with {@link Retryable} annotations.
  *
  * @author Juergen Hoeller

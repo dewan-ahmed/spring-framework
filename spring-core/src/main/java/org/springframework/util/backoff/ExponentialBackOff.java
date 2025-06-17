@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2025 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,25 +61,25 @@ import org.springframework.util.Assert;
 public class ExponentialBackOff implements BackOff {
 
 	/**
-	 * The default initial interval: 2000 ms.
+	 * The default initial interval: {@value} ms.
 	 */
 	public static final long DEFAULT_INITIAL_INTERVAL = 2000L;
 
 	/**
-	 * The default jitter range for each interval: 0 ms.
+	 * The default jitter range for each interval: {@value} ms.
 	 * @since 7.0
 	 */
 	public static final long DEFAULT_JITTER = 0;
 
 	/**
-	 * The default multiplier (increases the interval by 50%).
+	 * The default multiplier (increases the interval by 50%): {@value}.
 	 */
 	public static final double DEFAULT_MULTIPLIER = 1.5;
 
 	/**
-	 * The default maximum back-off time: 30000 ms.
+	 * The default maximum back-off time: {@value} ms.
 	 */
-	public static final long DEFAULT_MAX_INTERVAL = 30000L;
+	public static final long DEFAULT_MAX_INTERVAL = 30_000L;
 
 	/**
 	 * The default maximum elapsed time: unlimited.
