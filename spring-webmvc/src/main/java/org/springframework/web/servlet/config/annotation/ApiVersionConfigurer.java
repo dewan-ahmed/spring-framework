@@ -26,15 +26,16 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.MediaType;
-import org.springframework.web.accept.ApiDeprecationHandler;
+import org.springframework.web.accept.ApiVersionDeprecationHandler;
 import org.springframework.web.accept.ApiVersionParser;
 import org.springframework.web.accept.ApiVersionResolver;
 import org.springframework.web.accept.ApiVersionStrategy;
 import org.springframework.web.accept.DefaultApiVersionStrategy;
+import org.springframework.web.accept.InvalidApiVersionException;
 import org.springframework.web.accept.MediaTypeParamApiVersionResolver;
 import org.springframework.web.accept.PathApiVersionResolver;
 import org.springframework.web.accept.SemanticApiVersionParser;
-import org.springframework.web.accept.StandardApiDeprecationHandler;
+import org.springframework.web.accept.StandardApiVersionDeprecationHandler;
 
 /**
  * Configure API versioning.
@@ -52,9 +53,11 @@ public class ApiVersionConfigurer {
 
 	private @Nullable String defaultVersion;
 
-	private @Nullable ApiDeprecationHandler deprecationHandler;
-
 	private final Set<String> supportedVersions = new LinkedHashSet<>();
+
+	private boolean detectSupportedVersions = true;
+
+	private @Nullable ApiVersionDeprecationHandler deprecationHandler;
 
 
 	/**
@@ -143,29 +146,44 @@ public class ApiVersionConfigurer {
 	}
 
 	/**
-	 * Configure a handler to add handling for requests with a deprecated API
-	 * version. Typically, this involves sending hints and information about
-	 * the deprecation in response headers.
-	 * @param handler the handler to use
-	 * @see StandardApiDeprecationHandler
-	 */
-	public ApiVersionConfigurer setDeprecationHandler(ApiDeprecationHandler handler) {
-		this.deprecationHandler = handler;
-		return this;
-	}
-
-	/**
-	 * Add to the list of supported versions to validate request versions against.
-	 * Request versions that are not supported result in
-	 * {@link org.springframework.web.accept.InvalidApiVersionException}.
-	 * <p>Note that the set of supported versions is populated from versions
-	 * listed in controller mappings. Therefore, typically you do not have to
-	 * manage this list except for the initial API version, when controller
-	 * don't have to have a version to start.
+	 * Add to the list of supported versions to check against before raising
+	 * {@link InvalidApiVersionException} for unknown versions.
+	 * <p>By default, actual version values that appear in request mappings are
+	 * used for validation. Therefore, use of this method is optional. However,
+	 * if you prefer to use explicitly configured, supported versions only, then
+	 * set {@link #detectSupportedVersions} to {@code false}.
+	 * <p>Note that the initial API version, if not explicitly declared in any
+	 * request mappings, may need to be declared here instead as a supported
+	 * version.
 	 * @param versions supported versions to add
 	 */
 	public ApiVersionConfigurer addSupportedVersions(String... versions) {
 		Collections.addAll(this.supportedVersions, versions);
+		return this;
+	}
+
+	/**
+	 * Whether to use versions from mappings for supported version validation.
+	 * <p>By default, this is {@code true} in which case mapped versions are
+	 * considered supported versions. Set this to {@code false} if you want to
+	 * use only explicitly configured {@link #addSupportedVersions(String...)
+	 * supported versions}.
+	 * @param detect whether to use detected versions for validation
+	 */
+	public ApiVersionConfigurer detectSupportedVersions(boolean detect) {
+		this.detectSupportedVersions = detect;
+		return this;
+	}
+
+	/**
+	 * Configure a handler to add handling for requests with a deprecated API
+	 * version. Typically, this involves sending hints and information about
+	 * the deprecation in response headers.
+	 * @param handler the handler to use
+	 * @see StandardApiVersionDeprecationHandler
+	 */
+	public ApiVersionConfigurer setDeprecationHandler(ApiVersionDeprecationHandler handler) {
+		this.deprecationHandler = handler;
 		return this;
 	}
 
@@ -176,7 +194,8 @@ public class ApiVersionConfigurer {
 
 		DefaultApiVersionStrategy strategy = new DefaultApiVersionStrategy(this.versionResolvers,
 				(this.versionParser != null ? this.versionParser : new SemanticApiVersionParser()),
-				this.versionRequired, this.defaultVersion, this.deprecationHandler);
+				this.versionRequired, this.defaultVersion, this.detectSupportedVersions,
+				this.deprecationHandler);
 
 		this.supportedVersions.forEach(strategy::addSupportedVersion);
 
