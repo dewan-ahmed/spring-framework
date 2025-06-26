@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
@@ -465,9 +466,9 @@ class BeanFactoryUtilsTests {
 		lbf.registerSingleton("sfb1", sfb1);
 		lbf.registerSingleton("sfb2", sfb2);
 		lbf.registerBeanDefinition("recipient",
-				new RootBeanDefinition(Recipient.class, RootBeanDefinition.AUTOWIRE_CONSTRUCTOR, false));
+				new RootBeanDefinition(ConstructorRecipient.class, RootBeanDefinition.AUTOWIRE_CONSTRUCTOR, false));
 
-		Recipient recipient = lbf.getBean("recipient", Recipient.class);
+		ConstructorRecipient recipient = lbf.getBean("recipient", ConstructorRecipient.class);
 		assertThat(recipient.sfb1).isSameAs(lbf.getBean("sfb1", TestBean.class));
 		assertThat(recipient.sfb2).isSameAs(lbf.getBean("sfb2", TestBean.class));
 
@@ -551,6 +552,36 @@ class BeanFactoryUtilsTests {
 		assertThat(lbf.getBean("sfb2", CharSequence.class)).isInstanceOf(String.class);
 		assertThat(lbf.getBean("sfb1")).isInstanceOf(String.class);
 		assertThat(lbf.getBean("sfb2")).isInstanceOf(String.class);
+	}
+
+	@Test
+	void supportsMultipleTypesWithPropertyAndSingleBean() {
+		DefaultListableBeanFactory lbf = new DefaultListableBeanFactory();
+		SupportsTypeSmartFactoryBean sfb = new SupportsTypeSmartFactoryBean();
+		lbf.registerSingleton("sfb", sfb);
+
+		RootBeanDefinition rbd = new RootBeanDefinition(PropertyRecipient.class);
+		rbd.getPropertyValues().add("sfb", new RuntimeBeanReference(ITestBean.class));
+		lbf.registerBeanDefinition("recipient", rbd);
+
+		assertThat(lbf.getBean("recipient", PropertyRecipient.class).sfb)
+				.isSameAs(lbf.getBean("sfb", ITestBean.class));
+	}
+
+	@Test
+	void supportsMultipleTypesWithPropertyAndMultipleBeans() {
+		DefaultListableBeanFactory lbf = new DefaultListableBeanFactory();
+		SupportsTypeSmartFactoryBean sfb = new SupportsTypeSmartFactoryBean();
+		lbf.registerSingleton("sfb", sfb);
+		SupportsTypeSmartFactoryBean other = new SupportsTypeSmartFactoryBean();
+		lbf.registerSingleton("other", other);
+
+		RootBeanDefinition rbd = new RootBeanDefinition(PropertyRecipient.class);
+		rbd.getPropertyValues().add("sfb", new RuntimeBeanReference("sfb", ITestBean.class));
+		lbf.registerBeanDefinition("recipient", rbd);
+
+		assertThat(lbf.getBean("recipient", PropertyRecipient.class).sfb)
+				.isSameAs(lbf.getBean("sfb", ITestBean.class));
 	}
 
 
@@ -650,9 +681,10 @@ class BeanFactoryUtilsTests {
 	}
 
 
-	static class Recipient {
+	static class ConstructorRecipient {
 
-		public Recipient(ITestBean sfb1, ITestBean sfb2, List<ITestBean> testBeanList, List<CharSequence> stringList,
+		public ConstructorRecipient(ITestBean sfb1, ITestBean sfb2,
+				List<ITestBean> testBeanList, List<CharSequence> stringList,
 				ObjectProvider<ITestBean> testBeanProvider, ObjectProvider<CharSequence> stringProvider) {
 			this.sfb1 = sfb1;
 			this.sfb2 = sfb2;
@@ -673,6 +705,16 @@ class BeanFactoryUtilsTests {
 		ObjectProvider<ITestBean> testBeanProvider;
 
 		ObjectProvider<CharSequence> stringProvider;
+	}
+
+
+	static class PropertyRecipient {
+
+		ITestBean sfb;
+
+		public void setSfb(ITestBean sfb) {
+			this.sfb = sfb;
+		}
 	}
 
 }
