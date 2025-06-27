@@ -42,7 +42,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.util.StringValueResolver;
-import org.springframework.web.accept.InvalidApiVersionException;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -178,32 +177,15 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 	@Override
 	public Mono<HandlerMethod> getHandlerInternal(ServerWebExchange exchange) {
 		if (this.apiVersionStrategy != null) {
-			Comparable<?> requestVersion = exchange.getAttribute(API_VERSION_ATTRIBUTE);
-			if (requestVersion == null) {
-				requestVersion = getApiVersion(exchange, this.apiVersionStrategy);
-				if (requestVersion != null) {
-					exchange.getAttributes().put(API_VERSION_ATTRIBUTE, requestVersion);
+			Comparable<?> version = exchange.getAttribute(API_VERSION_ATTRIBUTE);
+			if (version == null) {
+				version = this.apiVersionStrategy.resolveParseAndValidateVersion(exchange);
+				if (version != null) {
+					exchange.getAttributes().put(API_VERSION_ATTRIBUTE, version);
 				}
 			}
 		}
 		return super.getHandlerInternal(exchange);
-	}
-
-	private static @Nullable Comparable<?> getApiVersion(
-			ServerWebExchange exchange, ApiVersionStrategy versionStrategy) {
-
-		String value = versionStrategy.resolveVersion(exchange);
-		if (value == null) {
-			return versionStrategy.getDefaultVersion();
-		}
-		try {
-			Comparable<?> version = versionStrategy.parseVersion(value);
-			versionStrategy.validateVersion(version, exchange);
-			return version;
-		}
-		catch (Exception ex) {
-			throw new InvalidApiVersionException(value, null, ex);
-		}
 	}
 
 	/**
@@ -242,42 +224,43 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 	}
 
 	private @Nullable RequestMappingInfo createRequestMappingInfo(AnnotatedElement element) {
-		RequestMappingInfo requestMappingInfo = null;
+
+		List<AnnotationDescriptor> descriptors =
+				MergedAnnotations.from(element, SearchStrategy.TYPE_HIERARCHY, RepeatableContainers.none()).stream()
+						.filter(MergedAnnotationPredicates.typeIn(RequestMapping.class, HttpExchange.class))
+						.filter(MergedAnnotationPredicates.firstRunOf(MergedAnnotation::getAggregateIndex))
+						.map(AnnotationDescriptor::new)
+						.distinct()
+						.toList();
+
+		RequestMappingInfo info = null;
 		RequestCondition<?> customCondition = (element instanceof Class<?> clazz ?
 				getCustomTypeCondition(clazz) : getCustomMethodCondition((Method) element));
 
-		List<AnnotationDescriptor> descriptors = getAnnotationDescriptors(element);
+		List<AnnotationDescriptor> mappingDescriptors =
+				descriptors.stream().filter(desc -> desc.annotation instanceof RequestMapping).toList();
 
-		List<AnnotationDescriptor> requestMappings = descriptors.stream()
-				.filter(desc -> desc.annotation instanceof RequestMapping).toList();
-		if (!requestMappings.isEmpty()) {
-			if (requestMappings.size() > 1 && logger.isWarnEnabled()) {
-				logger.warn("Multiple @RequestMapping annotations found on %s, but only the first will be used: %s"
-						.formatted(element, requestMappings));
-			}
-			requestMappingInfo = createRequestMappingInfo((RequestMapping) requestMappings.get(0).annotation, customCondition);
+		if (!mappingDescriptors.isEmpty()) {
+			checkMultipleAnnotations(element, mappingDescriptors);
+			info = createRequestMappingInfo((RequestMapping) mappingDescriptors.get(0).annotation, customCondition);
 		}
 
-		List<AnnotationDescriptor> httpExchanges = descriptors.stream()
-				.filter(desc -> desc.annotation instanceof HttpExchange).toList();
-		if (!httpExchanges.isEmpty()) {
-			Assert.state(requestMappingInfo == null,
-					() -> "%s is annotated with @RequestMapping and @HttpExchange annotations, but only one is allowed: %s"
-							.formatted(element, Stream.of(requestMappings, httpExchanges).flatMap(List::stream).toList()));
-			Assert.state(httpExchanges.size() == 1,
-					() -> "Multiple @HttpExchange annotations found on %s, but only one is allowed: %s"
-							.formatted(element, httpExchanges));
-			requestMappingInfo = createRequestMappingInfo((HttpExchange) httpExchanges.get(0).annotation, customCondition);
+		List<AnnotationDescriptor> exchangeDescriptors =
+				descriptors.stream().filter(desc -> desc.annotation instanceof HttpExchange).toList();
+
+		if (!exchangeDescriptors.isEmpty()) {
+			checkMultipleAnnotations(element, info, mappingDescriptors, exchangeDescriptors);
+			info = createRequestMappingInfo((HttpExchange) exchangeDescriptors.get(0).annotation, customCondition);
 		}
 
-		if (requestMappingInfo != null && this.apiVersionStrategy instanceof DefaultApiVersionStrategy davs) {
-			String version = requestMappingInfo.getVersionCondition().getVersion();
+		if (info != null && this.apiVersionStrategy instanceof DefaultApiVersionStrategy davs) {
+			String version = info.getVersionCondition().getVersion();
 			if (version != null) {
 				davs.addMappedVersion(version);
 			}
 		}
 
-		return requestMappingInfo;
+		return info;
 	}
 
 	/**
@@ -314,6 +297,28 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 	@SuppressWarnings("UnusedParameters")
 	protected @Nullable RequestCondition<?> getCustomMethodCondition(Method method) {
 		return null;
+	}
+
+	private void checkMultipleAnnotations(
+			AnnotatedElement element, List<AnnotationDescriptor> mappingDescriptors) {
+
+		if (logger.isWarnEnabled() && mappingDescriptors.size() > 1) {
+			logger.warn("Multiple @RequestMapping annotations found on %s, but only the first will be used: %s"
+					.formatted(element, mappingDescriptors));
+		}
+	}
+
+	private static void checkMultipleAnnotations(
+			AnnotatedElement element, @Nullable RequestMappingInfo info,
+			List<AnnotationDescriptor> mappingDescriptors, List<AnnotationDescriptor> exchangeDescriptors) {
+
+		Assert.state(info == null,
+				() -> "%s is annotated with @RequestMapping and @HttpExchange annotations, but only one is allowed: %s"
+						.formatted(element, Stream.of(mappingDescriptors, exchangeDescriptors).flatMap(List::stream).toList()));
+
+		Assert.state(exchangeDescriptors.size() == 1,
+				() -> "Multiple @HttpExchange annotations found on %s, but only one is allowed: %s"
+						.formatted(element, exchangeDescriptors));
 	}
 
 	/**
@@ -510,24 +515,16 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 		}
 	}
 
-	private static List<AnnotationDescriptor> getAnnotationDescriptors(AnnotatedElement element) {
-		return MergedAnnotations.from(element, SearchStrategy.TYPE_HIERARCHY, RepeatableContainers.none())
-				.stream()
-				.filter(MergedAnnotationPredicates.typeIn(RequestMapping.class, HttpExchange.class))
-				.filter(MergedAnnotationPredicates.firstRunOf(MergedAnnotation::getAggregateIndex))
-				.map(AnnotationDescriptor::new)
-				.distinct()
-				.toList();
-	}
 
 	private static class AnnotationDescriptor {
 
 		private final Annotation annotation;
+
 		private final MergedAnnotation<?> root;
 
-		AnnotationDescriptor(MergedAnnotation<Annotation> mergedAnnotation) {
-			this.annotation = mergedAnnotation.synthesize();
-			this.root = mergedAnnotation.getRoot();
+		AnnotationDescriptor(MergedAnnotation<Annotation> annotation) {
+			this.annotation = annotation.synthesize();
+			this.root = annotation.getRoot();
 		}
 
 		@Override

@@ -34,7 +34,6 @@ import org.springframework.core.retry.RetryPolicy;
 import org.springframework.core.retry.RetryTemplate;
 import org.springframework.core.retry.Retryable;
 import org.springframework.util.ClassUtils;
-import org.springframework.util.backoff.ExponentialBackOff;
 
 /**
  * Abstract retry interceptor implementation, adapting a given
@@ -89,26 +88,17 @@ public abstract class AbstractRetryInterceptor implements MethodInterceptor {
 			}
 		}
 
-		RetryTemplate retryTemplate = new RetryTemplate();
-
-		RetryPolicy.Builder policyBuilder = RetryPolicy.builder();
-		for (Class<? extends Throwable> include : spec.includes()) {
-			policyBuilder.includes(include);
-		}
-		for (Class<? extends Throwable> exclude : spec.excludes()) {
-			policyBuilder.excludes(exclude);
-		}
-		policyBuilder.predicate(spec.predicate().forMethod(method));
-		policyBuilder.maxAttempts(spec.maxAttempts());
-		retryTemplate.setRetryPolicy(policyBuilder.build());
-
-		ExponentialBackOff backOff = new ExponentialBackOff();
-		backOff.setInitialInterval(spec.delay());
-		backOff.setJitter(spec.jitterDelay());
-		backOff.setMultiplier(spec.delayMultiplier());
-		backOff.setMaxInterval(spec.maxDelay());
-		backOff.setMaxAttempts(spec.maxAttempts());
-		retryTemplate.setBackOffPolicy(backOff);
+		RetryPolicy retryPolicy = RetryPolicy.builder()
+				.includes(spec.includes())
+				.excludes(spec.excludes())
+				.predicate(spec.predicate().forMethod(method))
+				.maxAttempts(spec.maxAttempts())
+				.delay(Duration.ofMillis(spec.delay()))
+				.maxDelay(Duration.ofMillis(spec.maxDelay()))
+				.jitter(Duration.ofMillis(spec.jitter()))
+				.multiplier(spec.multiplier())
+				.build();
+		RetryTemplate retryTemplate = new RetryTemplate(retryPolicy);
 
 		try {
 			return retryTemplate.execute(new Retryable<>() {
@@ -147,8 +137,8 @@ public abstract class AbstractRetryInterceptor implements MethodInterceptor {
 
 			Publisher<?> publisher = adapter.toPublisher(result);
 			Retry retry = Retry.backoff(spec.maxAttempts(), Duration.ofMillis(spec.delay()))
-					.jitter((double) spec.jitterDelay() / spec.delay())
-					.multiplier(spec.delayMultiplier())
+					.jitter((double) spec.jitter() / spec.delay())
+					.multiplier(spec.multiplier())
 					.maxBackoff(Duration.ofMillis(spec.maxDelay()))
 					.filter(spec.combinedPredicate().forMethod(method));
 			publisher = (adapter.isMultiValue() ? Flux.from(publisher).retryWhen(retry) :
