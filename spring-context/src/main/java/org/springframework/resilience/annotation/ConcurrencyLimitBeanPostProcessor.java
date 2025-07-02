@@ -20,7 +20,6 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.aopalliance.intercept.Joinpoint;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.jspecify.annotations.Nullable;
@@ -39,7 +38,7 @@ import org.springframework.util.ConcurrentReferenceHashMap;
 /**
  * A convenient {@link org.springframework.beans.factory.config.BeanPostProcessor
  * BeanPostProcessor} that applies a concurrency interceptor to all bean methods
- * annotated with {@link ConcurrencyLimit} annotations.
+ * annotated with {@link ConcurrencyLimit @ConcurrencyLimit}.
  *
  * @author Juergen Hoeller
  * @since 7.0
@@ -93,8 +92,8 @@ public class ConcurrencyLimitBeanPostProcessor extends AbstractBeanFactoryAwareA
 							}
 						}
 						if (interceptor == null) {
-							interceptor = (limit != null ? new ConcurrencyThrottleInterceptor(limit.value()) :
-									Joinpoint::proceed);
+							Assert.state(limit != null, "No @ConcurrencyLimit annotation found");
+							interceptor = new ConcurrencyThrottleInterceptor(limit.value());
 							if (!perMethod) {
 								cache.classInterceptor = interceptor;
 							}
