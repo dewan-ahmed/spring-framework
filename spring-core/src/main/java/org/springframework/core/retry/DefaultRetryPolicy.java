@@ -22,6 +22,7 @@ import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.util.ExceptionTypeFilter;
 import org.springframework.util.backoff.BackOff;
 
 /**
@@ -37,6 +38,8 @@ class DefaultRetryPolicy implements RetryPolicy {
 
 	private final Set<Class<? extends Throwable>> excludes;
 
+	private final ExceptionTypeFilter exceptionFilter;
+
 	private final @Nullable Predicate<Throwable> predicate;
 
 	private final BackOff backOff;
@@ -48,6 +51,7 @@ class DefaultRetryPolicy implements RetryPolicy {
 
 		this.includes = includes;
 		this.excludes = excludes;
+		this.exceptionFilter = new ExceptionTypeFilter(this.includes, this.excludes, true);
 		this.predicate = predicate;
 		this.backOff = backOff;
 	}
@@ -55,26 +59,8 @@ class DefaultRetryPolicy implements RetryPolicy {
 
 	@Override
 	public boolean shouldRetry(Throwable throwable) {
-		if (!this.excludes.isEmpty()) {
-			for (Class<? extends Throwable> excludedType : this.excludes) {
-				if (excludedType.isInstance(throwable)) {
-					return false;
-				}
-			}
-		}
-		if (!this.includes.isEmpty()) {
-			boolean included = false;
-			for (Class<? extends Throwable> includedType : this.includes) {
-				if (includedType.isInstance(throwable)) {
-					included = true;
-					break;
-				}
-			}
-			if (!included) {
-				return false;
-			}
-		}
-		return this.predicate == null || this.predicate.test(throwable);
+		return this.exceptionFilter.match(throwable.getClass()) &&
+				(this.predicate == null || this.predicate.test(throwable));
 	}
 
 	@Override
