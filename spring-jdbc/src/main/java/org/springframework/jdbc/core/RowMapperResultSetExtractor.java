@@ -21,6 +21,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 
 /**
@@ -59,7 +61,7 @@ import org.springframework.util.Assert;
  * @see JdbcTemplate
  * @see org.springframework.jdbc.object.MappingSqlQuery
  */
-public class RowMapperResultSetExtractor<T> implements ResultSetExtractor<List<T>> {
+public class RowMapperResultSetExtractor<T extends @Nullable Object> implements ResultSetExtractor<List<T>> {
 
 	private final RowMapper<T> rowMapper;
 
@@ -91,7 +93,8 @@ public class RowMapperResultSetExtractor<T> implements ResultSetExtractor<List<T
 	 * @param rowMapper the RowMapper which creates an object for each row
 	 * @param rowsExpected the number of expected rows
 	 * (just used for optimized collection handling)
-	 * @param maxRows the number of max rows
+	 * @param maxRows the number of max rows (or -1 for the driver's default)
+	 * @since 7.0
 	 */
 	public RowMapperResultSetExtractor(RowMapper<T> rowMapper, int rowsExpected, int maxRows) {
 		Assert.notNull(rowMapper, "RowMapper must not be null");
