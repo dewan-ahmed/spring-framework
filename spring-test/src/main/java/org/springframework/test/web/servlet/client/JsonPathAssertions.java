@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.test.web.reactive.server;
+package org.springframework.test.web.servlet.client;
 
 import com.jayway.jsonpath.Configuration;
 import org.jspecify.annotations.Nullable;
@@ -25,20 +25,20 @@ import org.springframework.test.web.support.AbstractJsonPathAssertions;
 /**
  * <a href="https://github.com/jayway/JsonPath">JsonPath</a> assertions.
  *
- * @author Rossen Stoyanchev
- * @author Stephane Nicoll
  * @author Rob Worsnop
- * @since 5.0
+ * @author Rossen Stoyanchev
+ * @since 7.0
  * @see <a href="https://github.com/jayway/JsonPath">https://github.com/jayway/JsonPath</a>
  * @see JsonPathExpectationsHelper
  */
-public class JsonPathAssertions extends AbstractJsonPathAssertions<WebTestClient.BodyContentSpec> {
+public class JsonPathAssertions extends AbstractJsonPathAssertions<RestTestClient.BodyContentSpec> {
 
 
 	JsonPathAssertions(
-			WebTestClient.BodyContentSpec spec, String content, String expression,
+			RestTestClient.BodyContentSpec spec, String content, String expression,
 			@Nullable Configuration configuration) {
 
 		super(spec, content, expression, configuration);
 	}
+
 }

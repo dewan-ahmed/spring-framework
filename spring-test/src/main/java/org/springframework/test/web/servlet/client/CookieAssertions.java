@@ -14,30 +14,29 @@
  * limitations under the License.
  */
 
-package org.springframework.test.web.reactive.server;
+package org.springframework.test.web.servlet.client;
 
-import org.springframework.http.HttpStatusCode;
-import org.springframework.test.web.support.AbstractStatusAssertions;
+import org.springframework.http.ResponseCookie;
+import org.springframework.test.web.support.AbstractCookieAssertions;
+import org.springframework.util.MultiValueMap;
 
 /**
- * Assertions on the response status.
+ * Assertions on cookies of the response.
  *
- * @author Rossen Stoyanchev
  * @author Rob Worsnop
- * @since 5.0
- * @see WebTestClient.ResponseSpec#expectStatus()
+ * @since 7.0
  */
-public class StatusAssertions extends AbstractStatusAssertions<ExchangeResult, WebTestClient.ResponseSpec> {
+public class CookieAssertions extends AbstractCookieAssertions<ExchangeResult, RestTestClient.ResponseSpec> {
 
 
-	StatusAssertions(ExchangeResult result, WebTestClient.ResponseSpec spec) {
-		super(result, spec);
+	CookieAssertions(ExchangeResult exchangeResult, RestTestClient.ResponseSpec responseSpec) {
+		super(exchangeResult, responseSpec);
 	}
 
 
 	@Override
-	protected HttpStatusCode getStatus() {
-		return getExchangeResult().getStatus();
+	protected MultiValueMap<String, ResponseCookie> getResponseCookies() {
+		return getExchangeResult().getResponseCookies();
 	}
 
 	@Override

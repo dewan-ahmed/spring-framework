@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
-package org.springframework.test.web.reactive.server;
+package org.springframework.test.web.servlet.client;
 
 import org.springframework.http.HttpStatusCode;
+import org.springframework.test.web.servlet.client.RestTestClient.ResponseSpec;
 import org.springframework.test.web.support.AbstractStatusAssertions;
 
 /**
  * Assertions on the response status.
  *
- * @author Rossen Stoyanchev
  * @author Rob Worsnop
- * @since 5.0
- * @see WebTestClient.ResponseSpec#expectStatus()
+ * @since 7.0
+ * @see ResponseSpec#expectStatus()
  */
-public class StatusAssertions extends AbstractStatusAssertions<ExchangeResult, WebTestClient.ResponseSpec> {
+public class StatusAssertions extends AbstractStatusAssertions<ExchangeResult, RestTestClient.ResponseSpec> {
 
 
-	StatusAssertions(ExchangeResult result, WebTestClient.ResponseSpec spec) {
-		super(result, spec);
+	StatusAssertions(ExchangeResult exchangeResult, ResponseSpec responseSpec) {
+		super(exchangeResult, responseSpec);
 	}
 
 

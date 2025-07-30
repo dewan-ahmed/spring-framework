@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.test.web.reactive.server;
+package org.springframework.test.web.servlet.client;
 
 import java.util.Map;
 import java.util.Optional;
@@ -26,18 +26,16 @@ import org.springframework.test.web.support.AbstractXpathAssertions;
 import org.springframework.util.Assert;
 
 /**
- * XPath assertions for the {@link WebTestClient}.
+ * XPath assertions for the {@link RestTestClient}.
  *
- * @author Eric Deandrea
- * @author Rossen Stoyanchev
  * @author Rob Worsnop
- * @since 5.1
+ * @since 7.0
  */
-public class XpathAssertions extends AbstractXpathAssertions<WebTestClient.BodyContentSpec> {
+public class XpathAssertions extends AbstractXpathAssertions<RestTestClient.BodyContentSpec> {
 
 
 	XpathAssertions(
-			WebTestClient.BodyContentSpec spec,
+			RestTestClient.BodyContentSpec spec,
 			String expression, @Nullable Map<String, String> namespaces, Object... args) {
 
 		super(spec, expression, namespaces, args);

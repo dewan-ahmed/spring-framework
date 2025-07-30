@@ -14,30 +14,29 @@
  * limitations under the License.
  */
 
-package org.springframework.test.web.reactive.server;
+package org.springframework.test.web.servlet.client;
 
-import org.springframework.http.HttpStatusCode;
-import org.springframework.test.web.support.AbstractStatusAssertions;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.support.AbstractHeaderAssertions;
 
 /**
- * Assertions on the response status.
+ * Assertions on headers of the response.
  *
- * @author Rossen Stoyanchev
  * @author Rob Worsnop
- * @since 5.0
- * @see WebTestClient.ResponseSpec#expectStatus()
+ * @since 7.0
+ * @see RestTestClient.ResponseSpec#expectHeader()
  */
-public class StatusAssertions extends AbstractStatusAssertions<ExchangeResult, WebTestClient.ResponseSpec> {
+public class HeaderAssertions extends AbstractHeaderAssertions<ExchangeResult, RestTestClient.ResponseSpec> {
 
 
-	StatusAssertions(ExchangeResult result, WebTestClient.ResponseSpec spec) {
-		super(result, spec);
+	HeaderAssertions(ExchangeResult exchangeResult, RestTestClient.ResponseSpec responseSpec) {
+		super(exchangeResult, responseSpec);
 	}
 
 
 	@Override
-	protected HttpStatusCode getStatus() {
-		return getExchangeResult().getStatus();
+	protected HttpHeaders getResponseHeaders() {
+		return getExchangeResult().getResponseHeaders();
 	}
 
 	@Override
